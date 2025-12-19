@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user account within the AuthFlow application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile data. Keyed by the user's unique Firebase Auth ID. Allows read/write access only to the user identified by {userId}.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, matching the Firebase Auth UID."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support basic user authentication (registration and login) for the AuthFlow application. User data is stored in a dedicated collection, `users`, with documents keyed by the user's unique ID. This structure ensures clear ownership and facilitates straightforward security rules. No denormalization is needed for this simple auth flow as there are no subcollections or complex relationships. The authorization model is path-based, allowing direct access based on user ID. This setup prioritizes simplicity and security for the core features outlined."
+  }
+}

@@ -1,0 +1,96 @@
+/**
+ * This ruleset enforces a strict user-ownership model for the AuthFlow application.
+ *
+ * Core Philosophy:
+ * The security model is designed to be simple and secure, granting users full control
+ * over their own data while completely isolating them from other users' data.
+ * The default posture is to deny all access unless explicitly granted.
+ *
+ * Data Structure:
+ * All user-specific data is stored in a top-level 'users' collection. Each user's
+ * data is contained within a single document whose ID matches their Firebase
+ * Authentication UID (e.g., /users/{userId}).
+ *
+ * Key Security Decisions:
+ * - User Isolation: A user can only access the document at the path /users/{their-own-userId}.
+ * - No User Listing: To protect user privacy and prevent data scraping, querying the
+ *   top-level 'users' collection to get a list of all users is explicitly disabled.
+ * - Self-Creation: A user is permitted to create their own user document after signing up,
+ *   but they cannot create a document for any other user ID.
+ * - Path-Data Consistency: Rules enforce that the 'id' field within a user document must
+ *   match the document's ID ({userId}) upon creation and cannot be changed thereafter. This
+ *   maintains data integrity between the path and the document content.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Returns true if the user is authenticated via Firebase Auth.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Returns true if the authenticated user's UID matches the document's {userId}.
+     * This is the primary function for enforcing document ownership.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Returns true if a document already exists and the requester is the owner.
+     * This prevents unauthorized or accidental modifications/deletions of
+     * non-existent documents, which is crucial for state-changing operations.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Validates that the 'id' field within a new user document correctly
+     * matches the document's ID ({userId}) from the path. This enforces
+     * relational integrity at the time of creation.
+     */
+    function hasValidUserIdOnCreate(userId) {
+      return request.resource.data.id == userId;
+    }
+
+    /**
+     * Enforces that the 'id' field of a user document is immutable. It prevents
+     * an owner from changing the core identifier that links their data to
+     * their authentication UID.
+     */
+    function isUserIdImmutable() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Manages user profile documents.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own document (e.g., at /users/abc) where their auth UID is 'abc'.
+     * @allow (get) An authenticated user with UID 'abc' reading their own document at /users/abc.
+     * @deny (get) User 'abc' attempting to read the document at /users/xyz.
+     * @deny (list) Any user, authenticated or not, attempting to query the 'users' collection.
+     * @principle Restricts all access to a user's own data tree, enforcing strict ownership and preventing user enumeration.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && hasValidUserIdOnCreate(userId);
+      allow update: if isExistingOwner(userId) && isUserIdImmutable();
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
