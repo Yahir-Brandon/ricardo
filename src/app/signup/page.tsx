@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import type { AuthError } from 'firebase/auth';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 
 const formSchema = z.object({
@@ -40,6 +41,7 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
 
@@ -60,7 +62,14 @@ export default function SignupPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      
+      // Create user document in Firestore
+      await setDoc(doc(firestore, "users", userCredential.user.uid), {
+        id: userCredential.user.uid,
+        email: values.email,
+      });
+
       toast({
         title: 'Account Created!',
         description: "You've been successfully signed up.",
@@ -71,6 +80,8 @@ export default function SignupPage() {
       let errorMessage = 'An unexpected error occurred. Please try again.';
       if (authError.code === 'auth/email-already-in-use') {
         errorMessage = 'This email is already registered. Please log in.';
+      } else {
+        console.error(error);
       }
       toast({
         variant: 'destructive',
