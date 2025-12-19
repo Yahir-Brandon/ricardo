@@ -2,31 +2,33 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
+import { useUser, useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { signOut } from 'firebase/auth';
 
 export default function Home() {
-  const { user, loading, logout } = useAuth();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!isUserLoading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, isUserLoading, router]);
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await signOut(auth);
       router.push('/login');
     } catch (error) {
       console.error('Logout failed', error);
     }
   };
 
-  if (loading || !user) {
+  if (isUserLoading || !user) {
     return (
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
+import { useUser, useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { LogIn, LogOut, UserPlus, KeyRound } from 'lucide-react';
 import {
@@ -14,13 +14,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { signOut } from 'firebase/auth';
 
 export function Header() {
-  const { user, loading, logout } = useAuth();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
-    await logout();
+    await signOut(auth);
     router.push('/login');
   };
 
@@ -37,7 +39,7 @@ export function Header() {
           <span>AuthFlow</span>
         </Link>
         <div className="flex items-center gap-4">
-          {!loading &&
+          {!isUserLoading &&
             (user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

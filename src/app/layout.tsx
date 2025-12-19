@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AuthProvider } from '@/context/auth-context';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/header';
 import './globals.css';
@@ -25,11 +25,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <AuthProvider>
+        <FirebaseClientProvider>
           <Header />
           <main>{children}</main>
           <Toaster />
-        </AuthProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

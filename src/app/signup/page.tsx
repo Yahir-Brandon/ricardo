@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAuth } from '@/hooks/use-auth';
+import { useUser, useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -28,6 +28,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import type { AuthError } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 
 const formSchema = z.object({
@@ -38,7 +39,8 @@ const formSchema = z.object({
 export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const { signup, user, loading } = useAuth();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -50,15 +52,15 @@ export default function SignupPage() {
   });
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!isUserLoading && user) {
       router.push('/');
     }
-  }, [user, loading, router]);
+  }, [user, isUserLoading, router]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      await signup(values.email, values.password);
+      await createUserWithEmailAndPassword(auth, values.email, values.password);
       toast({
         title: 'Account Created!',
         description: "You've been successfully signed up.",
@@ -80,7 +82,7 @@ export default function SignupPage() {
     }
   }
 
-  if (loading || user) {
+  if (isUserLoading || user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
